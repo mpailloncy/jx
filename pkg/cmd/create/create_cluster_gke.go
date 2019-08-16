@@ -33,49 +33,51 @@ type CreateClusterGKEOptions struct {
 }
 
 type CreateClusterGKEFlags struct {
-	AutoUpgrade     bool   `mapstructure:"enable-autoupgrade"`
-	ClusterName     string `mapstructure:"cluster-name"`
-	ClusterIpv4Cidr string `mapstructure:"cluster-ipv4-cidr"`
-	ClusterVersion  string `mapstructure:"kubernetes-version"`
-	DiskSize        string `mapstructure:"disk-size"`
-	ImageType       string `mapstructure:"image-type"`
-	MachineType     string `mapstructure:"machine-type"`
-	MinNumOfNodes   string `mapstructure:"min-num-nodes"`
-	MaxNumOfNodes   string `mapstructure:"max-num-nodes"`
-	Network         string
-	ProjectId       string `mapstructure:"project-id"`
-	SkipLogin       bool   `mapstructure:"skip-login"`
-	SubNetwork      string
-	Region          string
-	Zone            string
-	Namespace       string
-	Labels          string
-	EnhancedScopes  bool `mapstructure:"enhanced-scopes"`
-	Scopes          []string
-	Preemptible     bool
-	EnhancedApis    bool `mapstructure:"enhanced-apis"`
+	AutoUpgrade           bool   `mapstructure:"enable-autoupgrade"`
+	ClusterName           string `mapstructure:"cluster-name"`
+	ClusterIpv4Cidr       string `mapstructure:"cluster-ipv4-cidr"`
+	ClusterVersion        string `mapstructure:"kubernetes-version"`
+	DiskSize              string `mapstructure:"disk-size"`
+	ImageType             string `mapstructure:"image-type"`
+	MachineType           string `mapstructure:"machine-type"`
+	MinNumOfNodes         string `mapstructure:"min-num-nodes"`
+	MaxNumOfNodes         string `mapstructure:"max-num-nodes"`
+	Network               string
+	ProjectId             string `mapstructure:"project-id"`
+	SkipLogin             bool   `mapstructure:"skip-login"`
+	SubNetwork            string
+	Region                string
+	Zone                  string
+	Namespace             string
+	Labels                string
+	EnhancedScopes        bool `mapstructure:"enhanced-scopes"`
+	Scopes                []string
+	Preemptible           bool
+	EnhancedApis          bool `mapstructure:"enhanced-apis"`
+	StackdriverKubernetes bool
 }
 
 const (
-	skipLoginFlagName         = "skip-login"
-	preemptibleFlagName       = "preemptible"
-	enhancedAPIFlagName       = "enhanced-apis"
-	enhancedScopesFlagName    = "enhanced-scopes"
-	maxGKEClusterNameLength   = 27
-	machineTypeFlagName       = "machine-type"
-	minNodesFlagName          = "min-num-nodes"
-	maxNodesFlagName          = "max-num-nodes"
-	projectIDFlagName         = "project-id"
-	zoneFlagName              = "zone"
-	regionFlagName            = "region"
-	diskSizeFlagName          = "disk-size"
-	imageTypeFlagName         = "image-type"
-	clusterIpv4CidrFlagName   = "cluster-ipv4-cidr"
-	enableAutoupgradeFlagName = "enable-autoupgrade"
-	networkFlagName           = "network"
-	subNetworkFlagName        = "subnetwork"
-	labelsFlagName            = "labels"
-	scopeFlagName             = "scope"
+	skipLoginFlagName           = "skip-login"
+	preemptibleFlagName         = "preemptible"
+	enhancedAPIFlagName         = "enhanced-apis"
+	enhancedScopesFlagName      = "enhanced-scopes"
+	maxGKEClusterNameLength     = 27
+	machineTypeFlagName         = "machine-type"
+	minNodesFlagName            = "min-num-nodes"
+	maxNodesFlagName            = "max-num-nodes"
+	projectIDFlagName           = "project-id"
+	zoneFlagName                = "zone"
+	regionFlagName              = "region"
+	diskSizeFlagName            = "disk-size"
+	imageTypeFlagName           = "image-type"
+	clusterIpv4CidrFlagName     = "cluster-ipv4-cidr"
+	enableAutoupgradeFlagName   = "enable-autoupgrade"
+	networkFlagName             = "network"
+	subNetworkFlagName          = "subnetwork"
+	labelsFlagName              = "labels"
+	scopeFlagName               = "scope"
+	enableStackdriverKubernetes = "enable-stackdriver-kubernetes"
 )
 
 var (
@@ -148,6 +150,7 @@ func NewCmdCreateClusterGKE(commonOpts *opts.CommonOptions) *cobra.Command {
 	cmd.Flags().BoolVarP(&options.Flags.Preemptible, preemptibleFlagName, "", false, "Use preemptible VMs in the node-pool")
 	cmd.Flags().BoolVarP(&options.Flags.EnhancedScopes, enhancedScopesFlagName, "", false, "Use enhanced Oauth scopes for access to GCS/GCR")
 	cmd.Flags().BoolVarP(&options.Flags.EnhancedApis, enhancedAPIFlagName, "", false, "Enable enhanced APIs to utilise Container Registry & Cloud Build")
+	cmd.Flags().BoolVarP(&options.Flags.StackdriverKubernetes, enableStackdriverKubernetes, "", true, "Enable Stackdriver Kubernetes monitoring.")
 
 	bindGKEConfigToFlags(cmd)
 
@@ -175,6 +178,7 @@ func bindGKEConfigToFlags(cmd *cobra.Command) {
 	_ = viper.BindPFlag(clusterConfigKey(preemptibleFlagName), cmd.Flags().Lookup(preemptibleFlagName))
 	_ = viper.BindPFlag(clusterConfigKey(enhancedScopesFlagName), cmd.Flags().Lookup(enhancedScopesFlagName))
 	_ = viper.BindPFlag(clusterConfigKey(enhancedAPIFlagName), cmd.Flags().Lookup(enhancedAPIFlagName))
+	_ = viper.BindPFlag(clusterConfigKey(enableStackdriverKubernetes), cmd.Flags().Lookup(enableStackdriverKubernetes))
 }
 
 func (o *CreateClusterGKEOptions) Run() error {
@@ -564,6 +568,10 @@ func (o *CreateClusterGKEOptions) createClusterGKE() error {
 
 	if o.Flags.Preemptible {
 		args = append(args, "--preemptible")
+	}
+
+	if o.Flags.StackdriverKubernetes {
+		args = append(args, "--enable-stackdriver-kubernetes")
 	}
 
 	labels := o.Flags.Labels
