@@ -50,22 +50,23 @@ type Cluster interface {
 
 // GKECluster implements Cluster interface for GKE
 type GKECluster struct {
-	name           string
-	provider       string
-	Organisation   string
-	ProjectID      string
-	Zone           string
-	MachineType    string
-	Preemptible    bool
-	MinNumOfNodes  string
-	MaxNumOfNodes  string
-	DiskSize       string
-	AutoRepair     bool
-	AutoUpgrade    bool
-	ServiceAccount string
-	DevStorageRole string
-	EnableKaniko   bool
-	EnableVault    bool
+	name                        string
+	provider                    string
+	Organisation                string
+	ProjectID                   string
+	Zone                        string
+	MachineType                 string
+	Preemptible                 bool
+	MinNumOfNodes               string
+	MaxNumOfNodes               string
+	DiskSize                    string
+	AutoRepair                  bool
+	AutoUpgrade                 bool
+	ServiceAccount              string
+	DevStorageRole              string
+	EnableKaniko                bool
+	EnableVault                 bool
+	EnableStackdriverKubernetes bool
 }
 
 const (
@@ -157,8 +158,13 @@ func (g GKECluster) CreateTfVarsFile(path string) error {
 	tf.write(path, "auto_upgrade", strconv.FormatBool(g.AutoUpgrade))
 	tf.write(path, "enable_kubernetes_alpha", "false")
 	tf.write(path, "enable_legacy_abac", "false")
-	tf.write(path, "logging_service", "logging.googleapis.com")
-	tf.write(path, "monitoring_service", "monitoring.googleapis.com")
+	if g.EnableStackdriverKubernetes {
+		tf.write(path, "logging_service", "logging.googleapis.com/kubernetes")
+		tf.write(path, "monitoring_service", "monitoring.googleapis.com/kubernetes")
+	} else {
+		tf.write(path, "logging_service", "BILIMlogging.googleapis.com")
+		tf.write(path, "monitoring_service", "BILIMmonitoring.googleapis.com")
+	}
 	tf.write(path, "node_devstorage_role", g.DevStorageRole)
 	tf.write(path, "enable_kaniko", booleanAsInt(g.EnableKaniko))
 	tf.write(path, "enable_vault", booleanAsInt(g.EnableVault))
@@ -202,6 +208,10 @@ func (g *GKECluster) ParseTfVarsFile(path string) {
 	enableVault, _ := terraform.ReadValueFromFile(path, "enable_vault")
 	b, _ = strconv.ParseBool(enableVault)
 	g.EnableVault = b
+
+	enableStackdriverKubernetes, _ := terraform.ReadValueFromFile(path, "enable_stackdriver_kubernetes")
+	b, _ = strconv.ParseBool(enableStackdriverKubernetes)
+	g.EnableStackdriverKubernetes = b
 }
 
 // TerraformGKEFlags for a cluster
@@ -328,6 +338,7 @@ func (options *TerraformGKEOptions) addFlags(cmd *cobra.Command, addSharedFlags 
 	cmd.Flags().StringVarP(&options.Flags.GKEZone, "zone", "", "", "The compute zone (e.g. us-central1-a) for the cluster")
 	cmd.Flags().BoolVarP(&options.Flags.GKEUseEnhancedScopes, "use-enhanced-scopes", "", false, "Use enhanced Oauth scopes for access to GCS/GCR")
 	cmd.Flags().BoolVarP(&options.Flags.GKEUseEnhancedApis, "use-enhanced-apis", "", false, "Enable enhanced APIs to utilise Container Registry & Cloud Build")
+	cmd.Flags().BoolVarP(&options.Flags.GKEStackdriverKubernetes, "enable-stackdriver-kubernetes", "", false, "Enable Stackdriver Kubernetes monitoring")
 }
 
 func stringInValidProviders(a string) bool {
@@ -711,6 +722,7 @@ func (options *TerraformGKEOptions) configureGKECluster(g *GKECluster, path stri
 	g.Organisation = options.Flags.OrganisationName
 	g.EnableKaniko = options.InstallOptions.Flags.Kaniko
 	g.EnableVault = options.InstallOptions.Flags.Vault
+	g.EnableStackdriverKubernetes = options.Flags.GKEStackdriverKubernetes
 
 	if options.Flags.GKEUseEnhancedScopes {
 		g.DevStorageRole = devStorageFullControl
@@ -801,6 +813,7 @@ func (options *TerraformGKEOptions) configureGKECluster(g *GKECluster, path stri
 
 	if options.InstallOptions.Flags.NextGeneration {
 		options.Flags.GKEUseEnhancedApis = true
+		options.Flags.GKEStackdriverKubernetes = true
 		options.Flags.GKEUseEnhancedScopes = true
 		options.InstallOptions.Flags.Kaniko = true
 		options.InstallOptions.Flags.Tekton = true

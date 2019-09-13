@@ -58,6 +58,7 @@ type Flags struct {
 	GKEServiceAccount           string
 	GKEUseEnhancedScopes        bool
 	GKEUseEnhancedApis          bool
+	GKEStackdriverKubernetes    bool
 	LocalOrganisationRepository string
 }
 
@@ -145,7 +146,7 @@ func (options *CreateTerraformOptions) addFlags(cmd *cobra.Command, addSharedFla
 	cmd.Flags().StringVarP(&options.Flags.GKEProjectID, "gke-project-id", "", "", "Google Project ID to create cluster in")
 	cmd.Flags().StringVarP(&options.Flags.GKEZone, "gke-zone", "", "", "The compute zone (e.g. us-central1-a) for the cluster")
 	cmd.Flags().BoolVarP(&options.Flags.GKEUseEnhancedScopes, "gke-use-enhanced-scopes", "", false, "Use enhanced Oauth scopes for access to GCS/GCR")
-	cmd.Flags().BoolVarP(&options.Flags.GKEUseEnhancedApis, "gke-use-enhanced-apis", "", false, "Enable enhanced APIs to utilise Container Registry & Cloud Build")
+	cmd.Flags().BoolVarP(&options.Flags.GKEStackdriverKubernetes, "gke-use-stackdriver-kubernetes", "", false, "Enable Stackdriver Kubernetes monitoring")
 }
 
 // Run implements this command
@@ -609,6 +610,7 @@ func (options *CreateTerraformOptions) configureGKECluster(g *GKECluster, path s
 	g.Organisation = options.Flags.OrganisationName
 	g.EnableKaniko = options.InstallOptions.Flags.Kaniko
 	g.EnableVault = options.InstallOptions.Flags.Vault
+	g.EnableStackdriverKubernetes = options.Flags.GKEStackdriverKubernetes
 
 	if options.Flags.GKEUseEnhancedScopes {
 		g.DevStorageRole = devStorageFullControl
